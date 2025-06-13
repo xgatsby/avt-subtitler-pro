@@ -431,10 +431,27 @@ class ContentGenerator:
                 logging.error("Model/tokenizer terjemahan belum dimuat.")
                 raise RuntimeError("Model/tokenizer terjemahan belum dimuat.")
 
-            if previous_translated_indonesian_text:
-                logging.debug(f"Menerima konteks sebelumnya (ID): '{previous_translated_indonesian_text[:50]}...'")
+            if previous_translated_indonesian_text is not None:
+                logging.warning(
+                    "Contextual translation is not yet supported by the current NMT model. "
+                    "The 'previous_translated_indonesian_text' parameter was received but will be ignored."
+                )
+                logging.debug(f"Menerima konteks sebelumnya (ID): '{previous_translated_indonesian_text[:50]}...'") # Existing debug log
             else:
                 logging.debug("Tidak ada konteks sebelumnya yang diterima untuk terjemahan.")
+
+            # HYPOTHETICAL EXAMPLE FOR FUTURE ENHANCEMENT
+            # If using a model that supports contextual input, the input string
+            # might be formatted like this. This is a placeholder for future development.
+            #
+            # if previous_translated_indonesian_text:
+            #     # This format is purely illustrative.
+            #     input_text = f"context: {previous_translated_indonesian_text} input: {sentence_text}"
+            # else:
+            #     input_text = sentence_text
+            #
+            # # Then, the tokenizer would use input_text:
+            # # inputs = self.tokenizer(input_text, return_tensors="pt", padding=True, truncation=True).to(self.cfg_content_gen.device)
 
             # Komentar mengenai Kontekstualisasi:
             # Implementasi kontekstualisasi yang sebenarnya sangat bergantung pada model NMT.
@@ -444,10 +461,10 @@ class ContentGenerator:
             # Perubahan saat ini hanya menyiapkan alur data untuk konteks; tidak mengubah cara `model.generate()` dipanggil.
             # Jika model `xgatsby/opus-mt-en-id-avt` mendukung parameter konteks khusus, itu perlu ditambahkan di sini.
             # Untuk saat ini, diasumsikan model tidak menggunakan `previous_translated_indonesian_text` secara eksplisit.
-            logging.debug("Catatan: Terjemahan kontekstual sebenarnya bergantung pada kemampuan model NMT yang digunakan.")
+            # logging.debug("Catatan: Terjemahan kontekstual sebenarnya bergantung pada kemampuan model NMT yang digunakan.") # This specific debug log can be removed as the warning is more prominent.
 
             inputs = self.tokenizer(sentence_text, return_tensors="pt", padding=True, truncation=True, max_length=512).to(self.cfg_content_gen.device)
-            # Panggilan ke model.generate() tetap sama.
+            # Panggilan ke model.generate() tetap sama, menggunakan `sentence_text` bukan `input_text` dari contoh hipotetis.
             translated_tokens = self.model.generate(**inputs, max_length=512)
             indonesian_translation: str = self.tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
 
@@ -1082,16 +1099,6 @@ class ProfessionalSubtitleProcessor:
             logging.info(f"SRT file saved successfully to {file_path}")
         except Exception as e:
             logging.error(f"Error saving SRT file {file_path}: {e}", exc_info=True)
-
-# --- Bagian 4: Eksekusi Utama ---
-            item = pysrt.SubRipItem(index=i, text=sub_data['text'])
-            start_seconds = sub_data['start']; end_seconds = sub_data['end']
-            s_h, s_rem = divmod(start_seconds, 3600); s_m, s_s = divmod(s_rem, 60)
-            item.start.hours = int(s_h); item.start.minutes = int(s_m); item.start.seconds = int(s_s); item.start.milliseconds = int((start_seconds % 1) * 1000)
-            e_h, e_rem = divmod(end_seconds, 3600); e_m, e_s = divmod(e_rem, 60)
-            item.end.hours = int(e_h); item.end.minutes = int(e_m); item.end.seconds = int(e_s); item.end.milliseconds = int((end_seconds % 1) * 1000)
-            subs.append(item)
-        subs.save(file_path, encoding='utf-8')
 
 # --- Bagian 4: Eksekusi Utama ---
 
