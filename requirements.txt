@@ -1,0 +1,11 @@
+# This file will be populated with dependencies.
+# Placeholder for now.
+# Example:
+# streamlit
+# torch
+# transformers
+# pysrt
+# moviepy
+# pyyaml
+pydantic
+PyYAML
