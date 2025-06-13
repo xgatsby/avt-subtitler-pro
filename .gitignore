@@ -1,2 +1,22 @@
 __pycache__/
 .env
+
+# Checkpoint files
+*_checkpoint.json
+
+# Uploaded media by Streamlit app
+uploaded_video.mp4
+temp_audio.wav
+
+# Kaggle specific (if any outputs are not meant to be committed, already covered by /kaggle/working/)
+# /kaggle/working/*
+# !/kaggle/working/.gitkeep # (If you want to keep the dir but ignore contents)
+
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache
+# __pycache__/ # Already present
+*.pyc
+*.pyo

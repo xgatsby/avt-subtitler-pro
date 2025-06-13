@@ -1,0 +1,39 @@
+# AVT Subtitler Pro Configuration
+
+paths:
+  dataset_path: "/kaggle/input/avt-subtitler-pro-assets" # Base for some inputs, should exist
+  working_directory: "/kaggle/working" # Base for outputs, will be created if not exists
+
+  mapping_json_filename: "mapping.json"
+  raw_srt_filename: "raw_subtitle.srt"
+  final_srt_filename: "FINAL_professional_subtitle.srt"
+  log_filename: "avt_subtitler_pro.log"
+  transcription_checkpoint_filename: "_transcription_checkpoint.json"
+
+content_generation:
+  video_input_path: "/kaggle/input/avt-subtitler-pro-assets/input.mp4" # Default, may be overridden by UI
+  whisper_model: "xgatsby/whisper-large-v3-avt-workshop"
+  translation_model: "xgatsby/opus-mt-en-id-avt"
+  device: null # Auto-detect if null: "cuda" or "cpu"
+
+  diarization:
+    enabled: true
+    hf_token: null # Optional: User should provide this via UI/env if their pyannote model needs it or to avoid rate limits
+    speaker_prefix_format: "- {speaker_id}: " # Example: "- SPEAKER_00: "
+    pyannote_model: "pyannote/speaker-diarization-3.1"
+
+subtitle_polishing: # Corresponds to SubtitleStandardsModel
+  max_lines: 2
+  max_chars_per_line: 42
+  min_reading_speed: 15.0 # Characters Per Second (CPS)
+  max_reading_speed: 25.0 # CPS
+  min_duration: 0.8      # Seconds
+  max_duration: 7.0      # Seconds
+  min_gap: 0.083         # Seconds (approx 2 NTSC frames or ~2 PAL frames)
+  preferred_reading_speed: 21.0 # CPS (for estimating durations when splitting)
+  merge_gap_threshold: 0.75    # Seconds (for merging close subtitles)
+
+checkpointing:
+  enabled: true
+  # transcription_checkpoint_file path is constructed from paths.working_directory and paths.transcription_checkpoint_filename
+  # raw_srt_output_path (from paths config) also serves as a translation checkpoint after Stage 1
