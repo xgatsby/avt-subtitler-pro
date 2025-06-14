@@ -6,11 +6,7 @@
 # --- Bagian 1: Impor & Konfigurasi Awal ---
 import os, sys, json, re, time, logging, datetime, shutil
 from typing import List, Dict, Tuple, Optional, frozenset
-<<<<<<< refactor-subtitler-pro
 # from dataclasses import dataclass # Digantikan oleh Pydantic model
-=======
-from dataclasses import dataclass
->>>>>>> main
 import torch
 import moviepy.editor as mp
 # pipeline, AutoModelForSpeechSeq2Seq, AutoProcessor are removed as AudioTranscriber now uses faster-whisper
@@ -115,28 +111,12 @@ def load_app_config(config_path: str = "config.yaml") -> AppConfigModel:
 
 # --- Bagian 2: Kelas-Kelas Generator Konten (Tahap 1) ---
 
-<<<<<<< refactor-subtitler-pro
 # Kelas ContentConfig lama DIHAPUS. Digantikan oleh AppConfigModel.paths dan AppConfigModel.content_generation.
-=======
-class ContentConfig:
-    """
-    Konfigurasi untuk path data, model, dan output yang digunakan dalam pembuatan konten.
-    """
-    DATASET_PATH: str = "/kaggle/input/avt-subtitler-pro-assets"
-    VIDEO_INPUT_PATH: str = os.path.join(DATASET_PATH, "input.mp4")
-    MAPPING_JSON_PATH: str = os.path.join(DATASET_PATH, "mapping.json") # Peta istilah khusus EN -> ID
-    RAW_SRT_OUTPUT_PATH: str = "/kaggle/working/raw_subtitle.srt" # Output SRT mentah setelah transkripsi dan terjemahan awal
-    LOG_FILE_PATH: str = "/kaggle/working/avt_subtitler_pro.log"
-    WHISPER_MODEL: str = "xgatsby/whisper-large-v3-avt-workshop" # Model Whisper untuk transkripsi ASR
-    TRANSLATION_MODEL: str = "xgatsby/opus-mt-en-id-avt" # Model NMT untuk terjemahan EN-ID
-    DEVICE: str = "cuda" if torch.cuda.is_available() else "cpu" # Perangkat untuk inferensi model (GPU jika ada)
->>>>>>> main
 
 class ContentGenerator:
     """
     Mengelola proses pembuatan konten mentah: transkripsi audio dan terjemahan awal.
     """
-<<<<<<< refactor-subtitler-pro
     def __init__(self, app_config: AppConfigModel) -> None: # Menggunakan AppConfigModel
         """
         Inisialisasi ContentGenerator dengan konfigurasi Pydantic.
@@ -250,45 +230,6 @@ class ContentGenerator:
         # 3. Perform audio extraction, diarization, transcription
         temp_audio_path = os.path.join(self.app_config.paths.working_directory, "temp_audio_for_transcription.wav")
         diarized_transcribed_segments: List[Dict] = []
-
-=======
-    def __init__(self) -> None:
-        """
-        Inisialisasi ContentGenerator dengan konfigurasi dan komponen terkait.
-        """
-        self.cfg: ContentConfig = ContentConfig()
-        self.translation_engine: ContentGenerator.TranslationEngine = self.TranslationEngine(self.cfg)
-        self.transcriber: ContentGenerator.AudioTranscriber = self.AudioTranscriber(self.cfg)
-
-    def run(self) -> None:
-        """
-        Menjalankan alur kerja pembuatan konten mentah:
-        1. Mendapatkan token Hugging Face.
-        2. Memuat model transkripsi.
-        3. Mentranskripsi audio dari video input.
-        4. Memuat model terjemahan dan peta istilah.
-        5. Memproses segmen transkripsi menjadi kalimat logis, menerjemahkannya, dan menulis file SRT mentah.
-        """
-        logging.info("=== RAW CONTENT GENERATOR STARTING ===")
-        hf_token: Optional[str] = self._get_hf_token()
-
-        self.transcriber.load_model(hf_token)
-        transcribed_segments: List[Dict] = self.transcriber.transcribe(self.cfg.VIDEO_INPUT_PATH)
-        if not transcribed_segments:
-            logging.error("Transcription produced no segments. Aborting.")
-            raise RuntimeError("Transcription produced no segments.")
-
-        self.translation_engine.load(hf_token)
-        self.translation_engine.process_and_write_srt(transcribed_segments, self.cfg.RAW_SRT_OUTPUT_PATH)
-        logging.info(f"Raw subtitle file created at {self.cfg.RAW_SRT_OUTPUT_PATH}")
-    
-    def _get_hf_token(self) -> Optional[str]:
-        """
-        Mengambil token Hugging Face dari Kaggle Secrets.
-        Returns:
-            Optional[str]: Token Hugging Face jika ditemukan, None jika tidak.
-        """
->>>>>>> main
         try:
             if not os.path.exists(video_input_path):
                 logging.error(f"File video input tidak ditemukan: {video_input_path}")
@@ -353,7 +294,6 @@ class ContentGenerator:
         """
         Mengelola transkripsi audio menggunakan model Whisper.
         """
-<<<<<<< refactor-subtitler-pro
         def __init__(self, app_config: AppConfigModel) -> None:
             """
             Inisialisasi AudioTranscriber dengan FasterWhisper.
@@ -434,67 +374,11 @@ class ContentGenerator:
                 return [] # Kembalikan list kosong jika ada error
 
             return whisper_chunks
-=======
-        def __init__(self, config: ContentConfig) -> None:
-            """
-            Inisialisasi AudioTranscriber.
-            Args:
-                config (ContentConfig): Konfigurasi yang digunakan.
-            """
-            self.cfg: ContentConfig = config
-            self.pipe: Optional[pipeline] = None # Pipeline Hugging Face untuk ASR
-
-        def load_model(self, token: Optional[str]) -> None:
-            """
-            Memuat model Whisper dan prosesor terkait.
-            Args:
-                token (Optional[str]): Token Hugging Face untuk mengakses model privat jika diperlukan.
-            """
-            logging.info(f"Loading Whisper model '{self.cfg.WHISPER_MODEL}'...")
-            model: AutoModelForSpeechSeq2Seq = AutoModelForSpeechSeq2Seq.from_pretrained(
-                self.cfg.WHISPER_MODEL,
-                torch_dtype=torch.float16,
-                use_safetensors=True,
-                token=token
-            )
-            model.to(self.cfg.DEVICE)
-            processor: AutoProcessor = AutoProcessor.from_pretrained(self.cfg.WHISPER_MODEL, token=token)
-            self.pipe = pipeline(
-                "automatic-speech-recognition",
-                model=model,
-                tokenizer=processor.tokenizer,
-                feature_extractor=processor.feature_extractor,
-                max_new_tokens=128,
-                chunk_length_s=30,
-                batch_size=16,
-                return_timestamps=True,
-                torch_dtype=torch.float16,
-                device=self.cfg.DEVICE
-            )
-            logging.info("Whisper model loaded successfully.")
-
-        def transcribe(self, video_path: str) -> List[Dict]:
-            """
-            Mentranskripsi audio dari file video yang diberikan.
-            Args:
-                video_path (str): Path ke file video.
-            Returns:
-                List[Dict]: Daftar segmen transkripsi, masing-masing berisi 'text' dan 'timestamp'.
-            """
-            if not self.pipe:
-                logging.error("Transcription pipe not initialized. Call load_model first.")
-                raise RuntimeError("Transcription pipe not initialized.")
-            logging.info(f"Starting transcription for {video_path}...")
-            result: Dict = self.pipe(video_path, generate_kwargs={"language": "english"})
-            logging.info("Transcription finished.")
-            return result.get("chunks", [])
->>>>>>> main
 
     class TranslationEngine:
         """
         Mengelola proses terjemahan teks dan penulisan file SRT.
         """
-<<<<<<< refactor-subtitler-pro
         def __init__(self, app_config: AppConfigModel) -> None:
             """
             Inisialisasi TranslationEngine.
@@ -551,45 +435,21 @@ class ContentGenerator:
                     "Contextual translation is not yet supported by the current NMT model. "
                     "The 'previous_translated_indonesian_text' parameter was received but will be ignored."
                 )
-                logging.debug(f"Menerima konteks sebelumnya (ID): '{previous_translated_indonesian_text[:50]}...'") # Existing debug log
+                logging.debug(f"Menerima konteks sebelumnya (ID): '{previous_translated_indonesian_text[:50]}...'")
             else:
                 logging.debug("Tidak ada konteks sebelumnya yang diterima untuk terjemahan.")
 
-            # HYPOTHETICAL EXAMPLE FOR FUTURE ENHANCEMENT
-            # If using a model that supports contextual input, the input string
-            # might be formatted like this. This is a placeholder for future development.
-            #
-            # if previous_translated_indonesian_text:
-            #     # This format is purely illustrative.
-            #     input_text = f"context: {previous_translated_indonesian_text} input: {sentence_text}"
-            # else:
-            #     input_text = sentence_text
-            #
-            # # Then, the tokenizer would use input_text:
-            # # inputs = self.tokenizer(input_text, return_tensors="pt", padding=True, truncation=True).to(self.cfg_content_gen.device)
-
-            # Komentar mengenai Kontekstualisasi:
-            # Implementasi kontekstualisasi yang sebenarnya sangat bergantung pada model NMT.
-            # Model standar (seperti Opus-MT) yang dipanggil via `model.generate()` biasanya tidak memiliki
-            # cara langsung untuk menerima konteks target-side (terjemahan sebelumnya) melalui parameter sederhana.
-            # Fitur ini mungkin memerlukan arsitektur model khusus atau fine-tuning.
-            # Perubahan saat ini hanya menyiapkan alur data untuk konteks; tidak mengubah cara `model.generate()` dipanggil.
-            # Jika model `xgatsby/opus-mt-en-id-avt` mendukung parameter konteks khusus, itu perlu ditambahkan di sini.
-            # Untuk saat ini, diasumsikan model tidak menggunakan `previous_translated_indonesian_text` secara eksplisit.
-            # logging.debug("Catatan: Terjemahan kontekstual sebenarnya bergantung pada kemampuan model NMT yang digunakan.") # This specific debug log can be removed as the warning is more prominent.
-
             inputs = self.tokenizer(sentence_text, return_tensors="pt", padding=True, truncation=True, max_length=512).to(self.cfg_content_gen.device)
-            # Panggilan ke model.generate() tetap sama, menggunakan `sentence_text` bukan `input_text` dari contoh hipotetis.
             translated_tokens = self.model.generate(**inputs, max_length=512)
             indonesian_translation: str = self.tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
 
             processed_translation: str = indonesian_translation
-            if self.mapping: # Hanya lakukan jika mapping ada
+            if self.mapping:
                 for term_to_find, replacement in self.mapping.items():
                     processed_translation = re.sub(re.escape(term_to_find), replacement, processed_translation, flags=re.IGNORECASE)
             return processed_translation
 
-        def process_and_write_srt(self, segments: List[Dict], output_path: str) -> None: # output_path dari argumen
+        def process_and_write_srt(self, segments: List[Dict], output_path: str) -> None:
             """
             Memproses segmen transkripsi menjadi kalimat logis, menerjemahkannya, dan menulis hasilnya ke file SRT.
             Args:
@@ -602,20 +462,19 @@ class ContentGenerator:
                 return
 
             logical_sentences: List[Dict] = []
-            current_sentence_chunks_info: List[Dict] = [] # Stores {'text':..., 'timestamp':..., 'speaker':...}
+            current_sentence_chunks_info: List[Dict] = []
 
-            for idx, seg in enumerate(segments): # segments now include 'speaker'
+            for idx, seg in enumerate(segments):
                 current_sentence_chunks_info.append({
                     'text': seg['text'],
                     'timestamp': seg['timestamp'],
-                    'speaker': seg.get('speaker', 'SPEAKER_00') # Default if speaker somehow missing
+                    'speaker': seg.get('speaker', 'SPEAKER_00')
                 })
 
                 is_last_segment: bool = (idx == len(segments) - 1)
                 ends_with_punctuation: bool = seg['text'].strip().endswith(('.', '?', '!'))
 
                 if (ends_with_punctuation or is_last_segment) and current_sentence_chunks_info:
-                    # Construct full sentence text from accumulated chunks
                     full_sentence_text: str = " ".join(chunk['text'] for chunk in current_sentence_chunks_info).strip()
                     full_sentence_text = re.sub(r'\s*([.?!])\s*', r'\1 ', full_sentence_text)
                     full_sentence_text = re.sub(r'\s+', ' ', full_sentence_text).strip()
@@ -623,32 +482,28 @@ class ContentGenerator:
                     if full_sentence_text:
                         start_time_s: float = current_sentence_chunks_info[0]['timestamp'][0]
                         end_time_s: float = current_sentence_chunks_info[-1]['timestamp'][1]
-                        # Assign speaker of the first chunk to the whole logical sentence
                         sentence_speaker: str = current_sentence_chunks_info[0]['speaker']
 
                         logical_sentences.append({
                             'text': full_sentence_text,
                             'timestamp': [start_time_s, end_time_s],
-                            'speaker': sentence_speaker, # Store the determined speaker for the sentence
+                            'speaker': sentence_speaker,
                             'original_chunks_count': len(current_sentence_chunks_info)
                         })
-                    current_sentence_chunks_info = [] # Reset for next sentence
+                    current_sentence_chunks_info = []
             
             logging.info(f"Menulis {len(logical_sentences)} kalimat logis ke file SRT: {output_path}")
-            previous_translation_for_context: Optional[str] = None # Inisialisasi konteks
+            previous_translation_for_context: Optional[str] = None
             with open(output_path, 'w', encoding='utf-8') as f:
                 for i, sentence_data in enumerate(logical_sentences):
                     sentence_to_translate: str = sentence_data['text']
-                    # Panggil _translate_sentence dengan konteks dari iterasi sebelumnya
                     translated_text: str = self._translate_sentence(
                         sentence_to_translate,
                         previous_translation_for_context
                     )
-                    # Simpan terjemahan saat ini untuk digunakan sebagai konteks pada iterasi berikutnya
                     previous_translation_for_context = translated_text
 
-                    final_text_for_srt: str = translated_text # Default text
-                    # Terapkan prefix pembicara jika diarization diaktifkan
+                    final_text_for_srt: str = translated_text
                     if self.app_config.content_generation.diarization.enabled:
                         speaker_id_str: str = sentence_data.get('speaker', 'SPEAKER_00')
                         prefix_format: str = self.app_config.content_generation.diarization.speaker_prefix_format
@@ -659,7 +514,6 @@ class ContentGenerator:
                                 final_text_for_srt = f"{prefix}{translated_text}"
                             except KeyError:
                                 logging.warning(f"Error format string untuk speaker_prefix_format: '{prefix_format}'. Menggunakan teks terjemahan mentah.")
-                        # else: prefix_format kosong, tidak ada yang dilakukan
 
                     start_s, end_s = sentence_data['timestamp']
                     start_time_str = str(datetime.timedelta(seconds=start_s)).split('.')[0] + f",{int((start_s % 1) * 1000):03}"
@@ -671,186 +525,6 @@ class ContentGenerator:
 # Kelas @dataclass SubtitleStandards (lama) sudah dihapus secara implisit karena tidak ada lagi di sini.
 # Penggunaannya digantikan oleh model Pydantic SubtitleStandardsModel dari config.py,
 # yang diakses melalui app_config.subtitle_polishing.
-=======
-        def __init__(self, config: ContentConfig) -> None:
-            """
-            Inisialisasi TranslationEngine.
-            Args:
-                config (ContentConfig): Konfigurasi yang digunakan.
-            """
-            self.cfg: ContentConfig = config
-            self.mapping: Dict[str, str] = {} # Peta istilah khusus (dari output model ID -> pengganti ID yang diinginkan)
-            self.model: Optional[AutoModelForSeq2SeqLM] = None
-            self.tokenizer: Optional[AutoTokenizer] = None
-        
-        def load(self, token: Optional[str]) -> None:
-            """
-            Memuat model terjemahan, tokenizer, dan peta istilah khusus.
-            Peta istilah diurutkan berdasarkan panjang kunci (descending) untuk prioritas pencocokan yang lebih panjang.
-            Args:
-                token (Optional[str]): Token Hugging Face.
-            """
-            logging.info(f"Loading translation model '{self.cfg.TRANSLATION_MODEL}' and mapping file...")
-            with open(self.cfg.MAPPING_JSON_PATH, 'r', encoding='utf-8') as f:
-                self.mapping = json.load(f)
-            # Urutkan mapping berdasarkan panjang kunci (descending) untuk memastikan istilah yang lebih panjang (lebih spesifik)
-            # dicocokkan terlebih dahulu.
-            self.mapping = dict(sorted(self.mapping.items(), key=lambda item: len(item[0]), reverse=True))
-
-            self.tokenizer = AutoTokenizer.from_pretrained(self.cfg.TRANSLATION_MODEL, token=token)
-            self.model = AutoModelForSeq2SeqLM.from_pretrained(self.cfg.TRANSLATION_MODEL, token=token).to(self.cfg.DEVICE)
-            logging.info("Translation Engine models and mapping loaded successfully.")
-
-        def _translate_sentence(self, sentence_text: str) -> str:
-            """
-            Menerjemahkan satu kalimat dari Bahasa Inggris ke Bahasa Indonesia dan menerapkan pemetaan pasca-terjemahan.
-            Args:
-                sentence_text (str): Kalimat dalam Bahasa Inggris untuk diterjemahkan.
-            Returns:
-                str: Kalimat yang telah diterjemahkan ke Bahasa Indonesia dan diproses dengan peta istilah.
-            """
-            if not sentence_text.strip():
-                return ""
-            if not self.model or not self.tokenizer:
-                logging.error("Translation model/tokenizer not loaded.")
-                raise RuntimeError("Translation model/tokenizer not loaded.")
-
-            # Langkah 1: Terjemahan utama dari EN ke ID
-            inputs = self.tokenizer(sentence_text, return_tensors="pt", padding=True, truncation=True, max_length=512).to(self.cfg.DEVICE)
-            translated_tokens = self.model.generate(**inputs, max_length=512)
-            indonesian_translation: str = self.tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
-
-            # Langkah 2: Aplikasi pemetaan pasca-terjemahan
-            # Iterasi melalui peta istilah yang telah diurutkan (self.mapping).
-            # Kunci dalam self.mapping adalah istilah Bahasa Indonesia yang mungkin dihasilkan oleh model NMT,
-            # dan nilainya adalah pengganti Bahasa Indonesia yang diinginkan (lebih akurat atau sesuai konteks).
-            # Ini berguna untuk memperbaiki terjemahan istilah teknis, nama, atau frasa umum.
-            processed_translation: str = indonesian_translation
-            for term_to_find_in_model_output, desired_replacement in self.mapping.items():
-                # Penggantian case-insensitive menggunakan regex.
-                # re.escape memastikan 'term_to_find_in_model_output' diperlakukan sebagai string literal.
-                processed_translation = re.sub(
-                    re.escape(term_to_find_in_model_output),
-                    desired_replacement,
-                    processed_translation,
-                    flags=re.IGNORECASE
-                )
-            return processed_translation
-
-        def process_and_write_srt(self, segments: List[Dict], output_path: str) -> None:
-            """
-            Memproses segmen transkripsi menjadi kalimat logis, menerjemahkannya, dan menulis hasilnya ke file SRT.
-            Args:
-                segments (List[Dict]): Daftar segmen dari Whisper, masing-masing dengan 'text' dan 'timestamp'.
-                output_path (str): Path untuk menyimpan file SRT yang dihasilkan.
-            """
-            if not segments:
-                logging.warning("No segments to process for SRT generation. Writing an empty SRT file.")
-                with open(output_path, 'w', encoding='utf-8') as f: # Ensure UTF-8 for SRT
-                    f.write("")
-                return
-
-            # --- Logika Segmentasi Kalimat ---
-            # Tujuan: Menggabungkan segmen-segmen pendek dari Whisper menjadi kalimat-kalimat yang lebih logis
-            # sebelum terjemahan. Ini meningkatkan kualitas terjemahan karena model NMT bekerja lebih baik
-            # dengan konteks kalimat penuh.
-            #
-            # Strategi:
-            # 1. Akumulasi teks dan timestamp dari segmen Whisper.
-            # 2. Deteksi akhir kalimat berdasarkan:
-            #    a. Tanda baca (".", "?", "!").
-            #    b. Merupakan segmen terakhir dari input.
-            # 3. Setelah kalimat logis terbentuk:
-            #    a. Normalisasi spasi (terutama setelah tanda baca).
-            #    b. Simpan teks kalimat, timestamp awal dan akhir gabungan, serta jumlah segmen asli.
-            # 4. Reset akumulator untuk kalimat berikutnya.
-
-            logical_sentences: List[Dict] = []  # Daftar untuk menyimpan kalimat-kalimat logis yang terbentuk
-            current_sentence_chunks_texts: List[str] = [] # Akumulator untuk teks dari segmen-segmen saat ini
-            current_sentence_chunks_timestamps: List[Tuple[float, float]] = [] # Akumulator untuk timestamp segmen-segmen saat ini
-
-            for idx, seg in enumerate(segments):
-                current_sentence_chunks_texts.append(seg['text'])
-                current_sentence_chunks_timestamps.append(seg['timestamp'])
-
-                # Cek apakah segmen ini mengakhiri sebuah kalimat
-                is_last_segment: bool = (idx == len(segments) - 1)
-                # Periksa apakah teks segmen (setelah di-strip) diakhiri dengan tanda baca umum.
-                ends_with_punctuation: bool = seg['text'].strip().endswith(('.', '?', '!'))
-
-                # Jika akhir kalimat terdeteksi (karena tanda baca atau ini segmen terakhir) DAN ada teks yang terakumulasi:
-                if (ends_with_punctuation or is_last_segment) and current_sentence_chunks_texts:
-                    # Gabungkan semua teks dari chunk yang terakumulasi menjadi satu string kalimat.
-                    full_sentence_text: str = " ".join(current_sentence_chunks_texts).strip()
-
-                    # Normalisasi spasi:
-                    # 1. Pastikan ada satu spasi setelah tanda baca akhir kalimat (jika diikuti teks lain).
-                    #    Contoh: "Halo dunia.Ini Budi." -> "Halo dunia. Ini Budi."
-                    full_sentence_text = re.sub(r'\s*([.?!])\s*', r'\1 ', full_sentence_text)
-                    # 2. Gabungkan beberapa spasi menjadi satu spasi.
-                    #    Contoh: "Ini    kalimat." -> "Ini kalimat."
-                    full_sentence_text = re.sub(r'\s+', ' ', full_sentence_text).strip()
-
-                    if full_sentence_text: # Hanya proses jika kalimat tidak kosong setelah normalisasi
-                        # Timestamp awal adalah waktu mulai dari chunk pertama dalam kalimat ini.
-                        start_time_s: float = current_sentence_chunks_timestamps[0][0]
-                        # Timestamp akhir adalah waktu selesai dari chunk terakhir dalam kalimat ini.
-                        end_time_s: float = current_sentence_chunks_timestamps[-1][1]
-
-                        logical_sentences.append({
-                            'text': full_sentence_text, # Teks kalimat lengkap
-                            'timestamp': [start_time_s, end_time_s], # [mulai_detik, selesai_detik]
-                            'original_chunks_count': len(current_sentence_chunks_texts) # Jumlah segmen Whisper asli
-                        })
-
-                    # Reset akumulator untuk mempersiapkan kalimat logis berikutnya.
-                    current_sentence_chunks_texts = []
-                    current_sentence_chunks_timestamps = []
-            
-            # Tulis kalimat-kalimat yang sudah diterjemahkan ke dalam file SRT.
-            logging.info(f"Writing {len(logical_sentences)} logical sentences to SRT file: {output_path}")
-            with open(output_path, 'w', encoding='utf-8') as f: # Pastikan encoding UTF-8
-                for i, sentence_data in enumerate(logical_sentences):
-                    translated_text: str = self._translate_sentence(sentence_data['text'])
-                    start_s, end_s = sentence_data['timestamp']
-                    # Format timestamps for SRT
-                    start_time_str = str(datetime.timedelta(seconds=start_s)).split('.')[0] + f",{int((start_s % 1) * 1000):03}"
-                    end_time_str = str(datetime.timedelta(seconds=end_s)).split('.')[0] + f",{int((end_s % 1) * 1000):03}"
-                    f.write(f"{i+1}\n{start_time_str} --> {end_time_str}\n{translated_text}\n\n")
-
-# --- Bagian 3: Kelas-Kelas Pemoles Profesional (Tahap 2) ---
-
-@dataclass
-class SubtitleStandards:
-    """
-    Menyimpan standar dan batasan untuk pemformatan subtitle.
-    """
-    MAX_LINES: int = 2  # Jumlah baris maksimum per subtitle.
-    MAX_CHARS_PER_LINE: int = 42  # Jumlah karakter maksimum per baris.
-    MIN_READING_SPEED: float = 15.0  # Kecepatan membaca minimum (karakter per detik, tanpa spasi).
-    MAX_READING_SPEED: float = 25.0  # Kecepatan membaca maksimum (karakter per detik, tanpa spasi).
-    MIN_DURATION: float = 0.8  # Durasi minimum subtitle dalam detik.
-    MAX_DURATION: float = 7.0  # Durasi maksimum subtitle dalam detik.
-    MIN_GAP: float = 0.083  # Jarak minimum antar subtitle dalam detik (sekitar 2 frame pada 24fps).
-    PREFERRED_READING_SPEED: float = 21.0 # Kecepatan membaca yang diutamakan untuk perhitungan durasi saat pemisahan.
-    merge_gap_threshold: float = 0.75 # Batas jarak (detik) untuk menggabungkan subtitle yang berdekatan.
-
-    @classmethod
-    def from_config(cls, config_dict: Dict) -> 'SubtitleStandards':
-        """
-        Membuat instance SubtitleStandards dari dictionary konfigurasi.
-        Args:
-            config_dict (Dict): Dictionary yang mungkin berisi bagian 'standards'.
-        Returns:
-            SubtitleStandards: Instance dengan nilai default atau nilai dari config.
-        """
-        standards_config: Dict = config_dict.get('standards', {})
-        instance = cls()
-        for key, value in standards_config.items():
-            if hasattr(instance, key):
-                setattr(instance, key, value)
-        return instance
->>>>>>> main
 
 class IntelligentLineBreaker:
     """
@@ -1065,7 +739,6 @@ class ProfessionalSubtitleProcessor:
     Memproses subtitle mentah menjadi format profesional dengan menerapkan
     aturan standar industri terkait pemecahan baris, durasi, dan kecepatan membaca.
     """
-<<<<<<< refactor-subtitler-pro
     def __init__(self, app_config: AppConfigModel) -> None: # Menggunakan AppConfigModel
         """
         Inisialisasi ProfessionalSubtitleProcessor.
@@ -1076,18 +749,6 @@ class ProfessionalSubtitleProcessor:
         self.standards: SubtitleStandardsModel = app_config.subtitle_polishing # Mengambil dari AppConfigModel
         self.line_breaker: IntelligentLineBreaker = IntelligentLineBreaker(self.standards) # Meneruskan model standar
         logging.info("ProfessionalSubtitleProcessor diinisialisasi dengan model konfigurasi Pydantic.")
-=======
-    def __init__(self, config: Dict) -> None:
-        """
-        Inisialisasi ProfessionalSubtitleProcessor.
-        Args:
-            config (Dict): Dictionary konfigurasi, biasanya dari file YAML.
-        """
-        self.config: Dict = config or {}
-        self.standards: SubtitleStandards = SubtitleStandards.from_config(self.config)
-        self.line_breaker: IntelligentLineBreaker = IntelligentLineBreaker(self.standards)
-        logging.info("ProfessionalSubtitleProcessor initialized.")
->>>>>>> main
 
     def process_from_file(self, input_path: str) -> List[Dict]:
         """
@@ -1412,23 +1073,6 @@ class ProfessionalSubtitleProcessor:
             e_ms = int((e_s_float % 1) * 1000)
             item.end.hours = int(e_h); item.end.minutes = int(e_m); item.end.seconds = e_s; item.end.milliseconds = e_ms
 
-<<<<<<< refactor-subtitler-pro
-=======
-            subs.append(item)
-        try:
-            subs.save(file_path, encoding='utf-8')
-            logging.info(f"SRT file saved successfully to {file_path}")
-        except Exception as e:
-            logging.error(f"Error saving SRT file {file_path}: {e}", exc_info=True)
-
-# --- Bagian 4: Eksekusi Utama ---
-            item = pysrt.SubRipItem(index=i, text=sub_data['text'])
-            start_seconds = sub_data['start']; end_seconds = sub_data['end']
-            s_h, s_rem = divmod(start_seconds, 3600); s_m, s_s = divmod(s_rem, 60)
-            item.start.hours = int(s_h); item.start.minutes = int(s_m); item.start.seconds = int(s_s); item.start.milliseconds = int((start_seconds % 1) * 1000)
-            e_h, e_rem = divmod(end_seconds, 3600); e_m, e_s = divmod(e_rem, 60)
-            item.end.hours = int(e_h); item.end.minutes = int(e_m); item.end.seconds = int(e_s); item.end.milliseconds = int((end_seconds % 1) * 1000)
->>>>>>> main
             subs.append(item)
         try:
             subs.save(file_path, encoding='utf-8')
@@ -1438,7 +1082,6 @@ class ProfessionalSubtitleProcessor:
 
 # --- Bagian 4: Eksekusi Utama ---
 
-<<<<<<< refactor-subtitler-pro
 def execute_pipeline(app_config: AppConfigModel) -> None:
     """
     Fungsi utama yang menjalankan seluruh alur kerja pembuatan dan pemolesan subtitle,
@@ -1451,25 +1094,6 @@ def execute_pipeline(app_config: AppConfigModel) -> None:
     # atau jika belum, dibuat di sini.
     os.makedirs(app_config.paths.working_directory, exist_ok=True)
     log_file_path = os.path.join(app_config.paths.working_directory, app_config.paths.log_filename)
-=======
-def main() -> None:
-    """
-    Fungsi utama untuk menjalankan seluruh alur kerja pembuatan dan pemolesan subtitle.
-    Alur kerja dibagi menjadi dua tahap utama:
-    1. Generasi Konten Mentah: Transkripsi audio dari video dan terjemahan awal ke Bahasa Indonesia.
-       Hasilnya adalah file SRT mentah.
-    2. Pemolesan Profesional: Menerapkan berbagai aturan standar subtitle (pemecahan baris,
-       durasi, kecepatan membaca, penggabungan) pada file SRT mentah untuk menghasilkan
-       output akhir yang berkualitas tinggi.
-    """
-    # Konfigurasi logging dasar untuk output informasi proses.
-    # 'force=True' digunakan jika logging mungkin sudah dikonfigurasi oleh library lain (misalnya di Kaggle).
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - [%(levelname)s] - (%(module)s:%(lineno)d) - %(message)s',
-        force=True
-    )
->>>>>>> main
     
     # Hapus handler logging sebelumnya untuk menghindari duplikasi jika fungsi ini dipanggil berkali-kali
     # (misalnya dalam sesi Streamlit yang panjang atau pengujian berulang).
@@ -1490,7 +1114,6 @@ def main() -> None:
 
     # Untuk debugging, tampilkan sebagian konfigurasi (hati-hati dengan data sensitif seperti token)
     try:
-<<<<<<< refactor-subtitler-pro
         config_dump_dict = app_config.model_dump()
         # Sembunyikan token dari log
         if 'diarization' in config_dump_dict.get('content_generation', {}) and \
@@ -1499,15 +1122,6 @@ def main() -> None:
         logging.debug(f"Menggunakan konfigurasi: {json.dumps(config_dump_dict, indent=2, default=str)}")
     except Exception as e:
         logging.warning(f"Gagal membuat dump konfigurasi untuk logging: {e}")
-=======
-        content_generator: ContentGenerator = ContentGenerator()
-        content_generator.run() # Menjalankan transkripsi dan terjemahan awal
-        logging.info("✅ TAHAP 1 SELESAI. File 'raw_subtitle.srt' telah dibuat.")
-    except Exception as e:
-        # Tangani error kritis yang mungkin terjadi selama generasi konten mentah.
-        logging.critical(f"❌ TAHAP 1 GAGAL KRITIS. Error: {e}", exc_info=True)
-        return # Hentikan eksekusi jika tahap 1 gagal
->>>>>>> main
 
 
     # === Path Setup dari app_config ===
@@ -1567,7 +1181,6 @@ def main() -> None:
     # === TAHAP 2: PEMOLESAN PROFESIONAL ===
     logging.info("\n--- Memulai TAHAP 2: Pemolesan Profesional ---")
     
-<<<<<<< refactor-subtitler-pro
     if not os.path.exists(raw_srt_output_path) or os.path.getsize(raw_srt_output_path) == 0:
         logging.critical(f"❌ TAHAP 2 GAGAL: File input SRT mentah '{raw_srt_output_path}' tidak ditemukan atau kosong setelah Tahap 1.")
         return
@@ -1575,7 +1188,7 @@ def main() -> None:
     try:
         final_subtitles: List[Dict] = professional_processor.process_from_file(raw_srt_output_path)
         professional_processor.write_srt_file(final_subtitles, final_srt_output_path)
-        logging.info(f"✅ TAHAP 2 SELESAI. File subtitle profesional disimpan di {final_output_srt}")
+        logging.info(f"✅ TAHAP 2 SELESAI. File subtitle profesional disimpan di {final_srt_output_path}") # Corrected variable name
     except Exception as e:
         logging.critical(f"❌ TAHAP 2 GAGAL KRITIS. Error: {e}", exc_info=True)
         # Tidak perlu return di sini, error sudah tercatat.
@@ -1595,41 +1208,5 @@ if __name__ == "__main__":
     else:
         # Logging sudah dilakukan di load_app_config jika gagal
         print("Gagal menjalankan pipeline karena konfigurasi tidak bisa dimuat.", file=sys.stderr)
-=======
-    # Path file input (hasil dari Tahap 1) dan output untuk Tahap 2.
-    raw_input_srt: str = ContentConfig.RAW_SRT_OUTPUT_PATH # Menggunakan path dari ContentConfig
-    final_output_srt: str = "/kaggle/working/FINAL_professional_subtitle.srt" # Path output akhir
 
-    # Path ke file konfigurasi YAML yang berisi standar pemolesan.
-    # Diasumsikan file ini ada di dataset input.
-    config_file_path: str = os.path.join(ContentConfig.DATASET_PATH, "config.yaml")
-
-    # Pastikan file SRT mentah (input untuk tahap ini) ada.
-    if not os.path.exists(raw_input_srt) or os.path.getsize(raw_input_srt) == 0:
-        logging.critical(f"❌ TAHAP 2 GAGAL: File input '{raw_input_srt}' tidak ditemukan atau kosong.")
-        return # Hentikan jika input tidak valid
-
-    try:
-        # Muat konfigurasi pemolesan dari file YAML.
-        config: Dict
-        with open(config_file_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
-
-        # Inisialisasi prosesor subtitle profesional dengan konfigurasi yang dimuat.
-        processor: ProfessionalSubtitleProcessor = ProfessionalSubtitleProcessor(config)
-
-        # Proses file SRT mentah untuk menerapkan semua aturan pemolesan.
-        final_subtitles: List[Dict] = processor.process_from_file(raw_input_srt)
-
-        # Tulis hasil subtitle yang sudah dipoles ke file SRT akhir.
-        processor.write_srt_file(final_subtitles, final_output_srt)
-
-        logging.info(f"✅ TAHAP 2 SELESAI. File subtitle profesional disimpan di {final_output_srt}")
-    except Exception as e:
-        # Tangani error kritis yang mungkin terjadi selama pemolesan.
-        logging.critical(f"❌ TAHAP 2 GAGAL KRITIS. Error: {e}", exc_info=True)
-
-if __name__ == "__main__":
-    # Panggil fungsi main jika script dijalankan secara langsung.
-    main()
->>>>>>> main
+[end of src/main.py]
