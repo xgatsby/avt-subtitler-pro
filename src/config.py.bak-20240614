@@ -1,3 +1,5 @@
+# Backup of old config.py before deletion. See root config.py for the canonical version.
+# ...original content preserved for reference...
 from pydantic import BaseModel, Field
 from typing import List, Dict, Tuple, Optional # Keep for potential future use, though not strictly needed for these models
 

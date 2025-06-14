@@ -9,3 +9,12 @@
 # pyyaml
 pydantic
 PyYAML
+streamlit
+torch
+torchaudio
+transformers
+pysrt
+moviepy
+pyannote.audio
+faster-whisper
+# kaggle_secrets  # Hanya diperlukan jika dijalankan di Kaggle
